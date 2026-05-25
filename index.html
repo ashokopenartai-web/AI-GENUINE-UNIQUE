@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PixelForge AI — Image Generator</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0A0A0F;
+    --bg2: #12121A;
+    --bg3: #1A1A26;
+    --surface: #1E1E2E;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --accent: #7C6FFF;
+    --accent2: #A78BFA;
+    --gold: #F5C842;
+    --coral: #FF6B6B;
+    --teal: #00D4AA;
+    --text: #F0EEF8;
+    --text2: #9B97B8;
+    --text3: #5C5882;
+    --glow: rgba(124,111,255,0.3);
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 0.5px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(20px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent), #C084FC);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .logo-text span { color: var(--accent2); }
+
+  .credits-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg3);
+    border: 0.5px solid var(--border2);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gold);
+  }
+
+  .credits-badge .dot {
+    width: 7px; height: 7px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* STYLE TABS */
+  .style-scroll {
+    padding: 16px 20px 10px;
+    overflow-x: auto;
+    display: flex;
+    gap: 8px;
+    scrollbar-width: none;
+  }
+  .style-scroll::-webkit-scrollbar { display: none; }
+
+  .style-chip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 30px;
+    font-size: 13px;
+    color: var(--text2);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    user-select: none;
+  }
+
+  .style-chip.active {
+    background: rgba(124,111,255,0.15);
+    border-color: var(--accent);
+    color: var(--accent2);
+  }
+
+  .style-chip .chip-emoji { font-size: 14px; }
+
+  /* PROMPT AREA */
+  .prompt-section {
+    padding: 12px 20px;
+  }
+
+  .prompt-box {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .prompt-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,111,255,0.12);
+  }
+
+  .prompt-textarea {
+    width: 100%;
+    min-height: 90px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    padding: 14px 16px 8px;
+    resize: none;
+    -webkit-appearance: none;
+  }
+
+  .prompt-textarea::placeholder { color: var(--text3); }
+
+  .prompt-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px 10px;
+    border-top: 0.5px solid var(--border);
+  }
+
+  .char-count {
+    font-size: 12px;
+    color: var(--text3);
+  }
+
+  .enhance-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: 0.5px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text2);
+    font-size: 12px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .enhance-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent2);
+    background: rgba(124,111,255,0.08);
+  }
+
+  /* SETTINGS GRID */
+  .settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 20px 14px;
+  }
+
+  .setting-card {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+  }
+
+  .setting-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .setting-options {
+    display: flex;
+    gap: 6px;
+  }
+
+  .opt-btn {
+    flex: 1;
+    padding: 6px 4px;
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .opt-btn.active {
+    background: rgba(124,111,255,0.15);
+    border-color: var(--accent);
+    color: var(--accent2);
+  }
+
+  /* NEGATIVE PROMPT TOGGLE */
+  .neg-toggle {
+    margin: 0 20px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .neg-toggle-label {
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .neg-textarea {
+    margin: 0 20px 14px;
+    width: calc(100% - 40px);
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    resize: none;
+    min-height: 58px;
+    display: none;
+  }
+  .neg-textarea.visible { display: block; }
+
+  /* GENERATE BUTTON */
+  .gen-section {
+    padding: 0 20px 20px;
+  }
+
+  .gen-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #7C6FFF, #A78BFA, #C084FC);
+    background-size: 200% 200%;
+    border: none;
+    border-radius: var(--radius);
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+    transition: opacity 0.2s, transform 0.15s;
+    animation: gradient-move 4s ease infinite;
+  }
+
+  @keyframes gradient-move {
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+  }
+
+  .gen-btn:active { transform: scale(0.98); opacity: 0.9; }
+  .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .gen-btn .sparkle { font-size: 20px; }
+
+  /* LOADING STATE */
+  .loading-overlay {
+    padding: 20px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .loading-overlay.visible { display: flex; }
+
+  .loading-canvas {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--bg3);
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .shimmer-wrap {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, var(--bg3) 30%, rgba(124,111,255,0.1) 50%, var(--bg3) 70%);
+    background-size: 200% 100%;
+    animation: shimmer 1.8s linear infinite;
+  }
+
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  .loading-icon {
+    z-index: 2;
+    font-size: 48px;
+    animation: spin-slow 3s linear infinite;
+  }
+
+  @keyframes spin-slow { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+
+  .loading-text {
+    text-align: center;
+    font-size: 14px;
+    color: var(--text2);
+  }
+
+  .loading-text strong {
+    display: block;
+    font-size: 16px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    margin-bottom: 4px;
+  }
+
+  .progress-bar-wrap {
+    width: 100%;
+    height: 3px;
+    background: var(--bg3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+
+  /* OUTPUT */
+  .output-section {
+    padding: 0 20px 20px;
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .output-section.visible { display: flex; }
+
+  .output-image-wrap {
+    width: 100%;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 0.5px solid var(--border2);
+    position: relative;
+  }
+
+  .output-image-wrap img {
+    width: 100%;
+    height: auto;
+    display: block;
+    animation: reveal 0.5s ease forwards;
+  }
+
+  @keyframes reveal {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .quality-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(10px);
+    border: 0.5px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--gold);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .output-meta {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+
+  .output-meta strong { color: var(--text); }
+
+  .action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 8px;
+    background: var(--bg3);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .action-btn:hover {
+    background: rgba(124,111,255,0.1);
+    border-color: var(--accent);
+    color: var(--accent2);
+  }
+
+  .action-btn .icon { font-size: 20px; }
+
+  .regen-btn {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .regen-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent2);
+    background: rgba(124,111,255,0.05);
+  }
+
+  /* GALLERY */
+  .gallery-section {
+    padding: 0 20px 30px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+  }
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .gallery-thumb {
+    aspect-ratio: 1;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 0.5px solid var(--border);
+    position: relative;
+    transition: transform 0.2s;
+  }
+
+  .gallery-thumb:hover { transform: scale(1.03); }
+
+  .gallery-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .gallery-thumb .thumb-empty {
+    width: 100%;
+    height: 100%;
+    background: var(--bg3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    opacity: 0.3;
+  }
+
+  /* TOGGLE SWITCH */
+  .toggle {
+    width: 34px; height: 20px;
+    background: var(--bg2);
+    border: 0.5px solid var(--border2);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2.5px; left: 3px;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(14px); }
+
+  /* SEED ROW */
+  .seed-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 20px 14px;
+  }
+
+  .seed-input {
+    flex: 1;
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+  }
+
+  .seed-input:focus { border-color: var(--accent); }
+  .seed-label { font-size: 12px; color: var(--text3); white-space: nowrap; }
+
+  .rand-seed-btn {
+    padding: 8px 12px;
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+  }
+
+  .rand-seed-btn:hover { border-color: var(--accent); color: var(--accent2); }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: 30px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    z-index: 100;
+    opacity: 0;
+    transition: all 0.3s;
+    white-space: nowrap;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 0; }
+
+  /* WATERMARK ON IMAGE */
+  .wm { position: absolute; bottom: 8px; left: 10px; font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'DM Sans', sans-serif; }
+
+  /* Smooth haptic feel */
+  button, .style-chip, .opt-btn, .gallery-thumb { -webkit-tap-highlight-color: transparent; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">✦</div>
+      <div class="logo-text">Pixel<span>Forge</span></div>
+    </div>
+    <div class="credits-badge">
+      <div class="dot"></div>
+      <span id="creditsCount">50</span> credits
+    </div>
+  </header>
+
+  <!-- STYLE CHIPS -->
+  <div class="style-scroll" id="styleScroll">
+    <div class="style-chip active" data-style="photorealistic"><span class="chip-emoji">📸</span> Photorealistic</div>
+    <div class="style-chip" data-style="cinematic"><span class="chip-emoji">🎬</span> Cinematic</div>
+    <div class="style-chip" data-style="anime"><span class="chip-emoji">🌸</span> Anime</div>
+    <div class="style-chip" data-style="digital-art"><span class="chip-emoji">🎨</span> Digital Art</div>
+    <div class="style-chip" data-style="oil-painting"><span class="chip-emoji">🖼️</span> Oil Painting</div>
+    <div class="style-chip" data-style="3d-render"><span class="chip-emoji">🔮</span> 3D Render</div>
+    <div class="style-chip" data-style="watercolor"><span class="chip-emoji">💧</span> Watercolor</div>
+    <div class="style-chip" data-style="pixel-art"><span class="chip-emoji">👾</span> Pixel Art</div>
+    <div class="style-chip" data-style="pencil-sketch"><span class="chip-emoji">✏️</span> Sketch</div>
+    <div class="style-chip" data-style="neon-cyberpunk"><span class="chip-emoji">🌆</span> Cyberpunk</div>
+  </div>
+
+  <!-- PROMPT AREA -->
+  <div class="prompt-section">
+    <div class="prompt-box">
+      <textarea
+        class="prompt-textarea"
+        id="promptInput"
+        placeholder="Describe your image in vivid detail… A misty mountain peak at golden hour, dramatic clouds, hyperrealistic…"
+        maxlength="500"
+      ></textarea>
+      <div class="prompt-actions">
+        <span class="char-count"><span id="charCount">0</span>/500</span>
+        <button class="enhance-btn" id="enhanceBtn">✦ Enhance Prompt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS: Aspect Ratio + Quality -->
+  <div class="settings-grid">
+    <div class="setting-card">
+      <div class="setting-label">Aspect Ratio</div>
+      <div class="setting-options" id="aspectGroup">
+        <button class="opt-btn active" data-val="1:1">1:1</button>
+        <button class="opt-btn" data-val="4:3">4:3</button>
+        <button class="opt-btn" data-val="16:9">16:9</button>
+      </div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-label">Quality</div>
+      <div class="setting-options" id="qualityGroup">
+        <button class="opt-btn" data-val="standard">SD</button>
+        <button class="opt-btn active" data-val="hd">HD</button>
+        <button class="opt-btn" data-val="ultra">4K</button>
+      </div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-label">Steps</div>
+      <div class="setting-options" id="stepsGroup">
+        <button class="opt-btn" data-val="20">Fast</button>
+        <button class="opt-btn active" data-val="40">Balanced</button>
+        <button class="opt-btn" data-val="80">Detail</button>
+      </div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-label">CFG Scale</div>
+      <div class="setting-options" id="cfgGroup">
+        <button class="opt-btn" data-val="5">5</button>
+        <button class="opt-btn active" data-val="7">7</button>
+        <button class="opt-btn" data-val="12">12</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEED -->
+  <div class="seed-row">
+    <span class="seed-label">Seed</span>
+    <input type="number" class="seed-input" id="seedInput" placeholder="Random" min="0" max="999999999">
+    <button class="rand-seed-btn" id="randSeedBtn">🎲 Random</button>
+  </div>
+
+  <!-- NEGATIVE PROMPT -->
+  <div class="neg-toggle" id="negToggle">
+    <span class="neg-toggle-label">Negative Prompt</span>
+    <div class="toggle" id="negSwitch"></div>
+  </div>
+  <textarea class="neg-textarea" id="negTextarea" placeholder="blur, deformed, ugly, watermark, text, low quality…"></textarea>
+
+  <!-- GENERATE BUTTON -->
+  <div class="gen-section">
+    <button class="gen-btn" id="generateBtn">
+      <span class="sparkle">✦</span>
+      Generate Image
+    </button>
+  </div>
+
+  <!-- LOADING STATE -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-canvas">
+      <div class="shimmer-wrap"></div>
+      <div class="loading-icon">⟳</div>
+    </div>
+    <div class="loading-text">
+      <strong id="loadingTitle">Rendering your vision…</strong>
+      <span id="loadingSubtitle">Initializing diffusion model</span>
+    </div>
+    <div class="progress-bar-wrap" style="width:100%">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="output-section" id="outputSection">
+    <div class="output-image-wrap" id="outputWrap">
+      <img id="outputImage" src="" alt="Generated image">
+      <div class="quality-badge">✦ 4K Ultra</div>
+      <div class="wm">PixelForge AI</div>
+    </div>
+
+    <div class="output-meta" id="outputMeta">
+      <strong>Prompt used:</strong> <span id="metaPromptText"></span>
+    </div>
+
+    <div class="action-row">
+      <button class="action-btn" id="downloadBtn">
+        <span class="icon">⬇</span>
+        <span>Download</span>
+      </button>
+      <button class="action-btn" id="shareBtn">
+        <span class="icon">↗</span>
+        <span>Share</span>
+      </button>
+      <button class="action-btn" id="variationBtn">
+        <span class="icon">⟳</span>
+        <span>Variation</span>
+      </button>
+    </div>
+
+    <button class="regen-btn" id="regenBtn">↺ Generate Another</button>
+  </div>
+
+  <!-- GALLERY -->
+  <div class="gallery-section" id="gallerySection">
+    <div class="section-title">Recent Creations</div>
+    <div class="gallery-grid" id="galleryGrid">
+      <div class="gallery-thumb"><div class="thumb-empty">🎨</div></div>
+      <div class="gallery-thumb"><div class="thumb-empty">🎨</div></div>
+      <div class="gallery-thumb"><div class="thumb-empty">🎨</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Telegram WebApp init
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#0A0A0F');
+  tg.setBackgroundColor('#0A0A0F');
+}
+
+// State
+let selectedStyle = 'photorealistic';
+let selectedAspect = '1:1';
+let selectedQuality = 'hd';
+let selectedSteps = '40';
+let selectedCFG = '7';
+let negEnabled = false;
+let isGenerating = false;
+let credits = 50;
+let gallery = [];
+let currentSeed = null;
+
+// YOUR IMAGEN / DALL-E / STABILITY CONFIG
+// Replace with your actual API endpoint and key
+const API_CONFIG = {
+  // Option A: Stability AI (SDXL / SD3)
+  stability: {
+    endpoint: 'https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image',
+    key: 'YOUR_STABILITY_API_KEY'
+  },
+  // Option B: OpenAI DALL-E 3
+  openai: {
+    endpoint: 'https://api.openai.com/v1/images/generations',
+    key: 'YOUR_OPENAI_API_KEY'
+  },
+  // Active provider
+  active: 'openai' // 'stability' | 'openai' | 'demo'
+};
+
+// Style prompt suffixes
+const stylePrompts = {
+  'photorealistic': ', ultra photorealistic, 8K RAW photo, sharp focus, professional camera, DSLR, natural lighting',
+  'cinematic': ', cinematic photography, film grain, anamorphic lens, dramatic lighting, movie still, golden ratio composition',
+  'anime': ', anime style, Studio Ghibli, vibrant colors, clean lines, cel shading, Japanese animation',
+  'digital-art': ', digital art, concept art, highly detailed, ArtStation trending, professional illustration',
+  'oil-painting': ', oil painting, impressionist style, thick brushstrokes, canvas texture, gallery quality, masterful technique',
+  '3d-render': ', 3D render, Blender octane render, subsurface scattering, ray tracing, photorealistic materials, studio lighting',
+  'watercolor': ', watercolor painting, soft edges, paper texture, delicate washes, botanical illustration style',
+  'pixel-art': ', pixel art, 16-bit style, retro game aesthetic, crisp pixels, isometric perspective',
+  'pencil-sketch': ', pencil sketch, fine lines, graphite texture, detailed hatching, concept sketch, professional illustration',
+  'neon-cyberpunk': ', neon cyberpunk, futuristic city, holographic lights, rain-slicked streets, blade runner aesthetic, vivid neons'
+};
+
+// Prompt enhancement templates
+const enhancements = [
+  'masterpiece, best quality, extremely detailed, professional',
+  'award-winning photography, sharp focus, depth of field',
+  '8K resolution, cinematic lighting, perfect composition',
+  'trending on ArtStation, highly detailed, studio quality'
+];
+
+// DOM refs
+const promptInput = document.getElementById('promptInput');
+const charCount = document.getElementById('charCount');
+const enhanceBtn = document.getElementById('enhanceBtn');
+const generateBtn = document.getElementById('generateBtn');
+const loadingOverlay = document.getElementById('loadingOverlay');
+const outputSection = document.getElementById('outputSection');
+const outputImage = document.getElementById('outputImage');
+const progressBar = document.getElementById('progressBar');
+const loadingTitle = document.getElementById('loadingTitle');
+const loadingSubtitle = document.getElementById('loadingSubtitle');
+const creditsCount = document.getElementById('creditsCount');
+const metaPromptText = document.getElementById('metaPromptText');
+const seedInput = document.getElementById('seedInput');
+const negTextarea = document.getElementById('negTextarea');
+const galleryGrid = document.getElementById('galleryGrid');
+const outputWrap = document.getElementById('outputWrap');
+const toastEl = document.getElementById('toast');
+
+// Style chip selection
+document.querySelectorAll('.style-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.style-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedStyle = chip.dataset.style;
+    haptic();
+  });
+});
+
+// Option button groups
+function setupOptGroup(id, setter) {
+  document.querySelectorAll(`#${id} .opt-btn`).forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll(`#${id} .opt-btn`).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      setter(btn.dataset.val);
+      haptic();
+    });
+  });
+}
+
+setupOptGroup('aspectGroup', v => selectedAspect = v);
+setupOptGroup('qualityGroup', v => selectedQuality = v);
+setupOptGroup('stepsGroup', v => selectedSteps = v);
+setupOptGroup('cfgGroup', v => selectedCFG = v);
+
+// Char count
+promptInput.addEventListener('input', () => {
+  charCount.textContent = promptInput.value.length;
+});
+
+// Enhance prompt
+enhanceBtn.addEventListener('click', async () => {
+  if (!promptInput.value.trim()) { showToast('Enter a prompt first!'); return; }
+  enhanceBtn.textContent = '⟳ Enhancing…';
+  enhanceBtn.disabled = true;
+
+  // Call Claude to enhance the prompt
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: `Enhance this image generation prompt to be more vivid, detailed, and professional for ${selectedStyle} style. Return ONLY the enhanced prompt, no explanation, no quotes:\n\n${promptInput.value}`
+        }]
+      })
+    });
+    const data = await resp.json();
+    const enhanced = data.content?.find(b => b.type === 'text')?.text?.trim();
+    if (enhanced) {
+      promptInput.value = enhanced;
+      charCount.textContent = enhanced.length;
+      showToast('✦ Prompt enhanced!');
+    }
+  } catch (e) {
+    const base = enhancements[Math.floor(Math.random() * enhancements.length)];
+    promptInput.value = promptInput.value + ', ' + base;
+    charCount.textContent = promptInput.value.length;
+    showToast('✦ Prompt enhanced!');
+  }
+
+  enhanceBtn.textContent = '✦ Enhance Prompt';
+  enhanceBtn.disabled = false;
+});
+
+// Random seed
+document.getElementById('randSeedBtn').addEventListener('click', () => {
+  seedInput.value = Math.floor(Math.random() * 999999999);
+  haptic();
+});
+
+// Negative prompt toggle
+document.getElementById('negToggle').addEventListener('click', () => {
+  negEnabled = !negEnabled;
+  document.getElementById('negSwitch').classList.toggle('on', negEnabled);
+  negTextarea.classList.toggle('visible', negEnabled);
+  haptic();
+});
+
+// Quality badge label
+const qualityLabels = { standard: 'SD', hd: 'HD Quality', ultra: '4K Ultra' };
+
+// Loading messages
+const loadingSteps = [
+  ['Initializing neural canvas…', 'Warming up diffusion engine'],
+  ['Composing scene elements…', 'Arranging spatial relationships'],
+  ['Rendering lighting and shadows…', 'Applying photon simulation'],
+  ['Adding fine details…', 'Sharpening textures and edges'],
+  ['Color grading…', 'Applying professional color science'],
+  ['Final upscale…', 'Enhancing to output resolution'],
+];
+
+// Generate button
+generateBtn.addEventListener('click', async () => {
+  const prompt = promptInput.value.trim();
+  if (!prompt) { showToast('Please enter a prompt!'); return; }
+  if (credits <= 0) { showToast('No credits remaining!'); return; }
+  if (isGenerating) return;
+
+  isGenerating = true;
+  currentSeed = seedInput.value ? parseInt(seedInput.value) : Math.floor(Math.random() * 999999999);
+  seedInput.value = currentSeed;
+
+  // Update quality badge
+  document.querySelector('.quality-badge').textContent = '✦ ' + qualityLabels[selectedQuality];
+
+  // Show loading
+  outputSection.classList.remove('visible');
+  loadingOverlay.classList.add('visible');
+  generateBtn.disabled = true;
+
+  // Progress animation
+  let step = 0;
+  progressBar.style.width = '0%';
+  const totalDuration = selectedQuality === 'ultra' ? 6000 : selectedQuality === 'hd' ? 4500 : 3000;
+  const stepDuration = totalDuration / loadingSteps.length;
+
+  const progressInterval = setInterval(() => {
+    if (step < loadingSteps.length) {
+      const pct = ((step + 1) / loadingSteps.length) * 90;
+      progressBar.style.width = pct + '%';
+      loadingTitle.textContent = loadingSteps[step][0];
+      loadingSubtitle.textContent = loadingSteps[step][1];
+      step++;
+    }
+  }, stepDuration);
+
+  // Build final prompt
+  const styleBoost = stylePrompts[selectedStyle] || '';
+  const negPrompt = negEnabled ? (negTextarea.value || 'blur, low quality, ugly, deformed, artifacts') : 'blur, worst quality, low quality, deformed, ugly';
+  const fullPrompt = prompt + styleBoost;
+
+  try {
+    let imageUrl = null;
+
+    if (API_CONFIG.active === 'openai') {
+      const sizeMap = { '1:1': '1024x1024', '4:3': '1024x768', '16:9': '1792x1024' };
+      const size = sizeMap[selectedAspect] || '1024x1024';
+
+      const resp = await fetch(API_CONFIG.openai.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_CONFIG.openai.key}`
+        },
+        body: JSON.stringify({
+          model: 'dall-e-3',
+          prompt: fullPrompt,
+          n: 1,
+          size: size,
+          quality: selectedQuality === 'ultra' ? 'hd' : selectedQuality,
+          response_format: 'url'
+        })
+      });
+      const data = await resp.json();
+      imageUrl = data.data?.[0]?.url;
+
+    } else if (API_CONFIG.active === 'stability') {
+      const heightMap = { '1:1': 1024, '4:3': 768, '16:9': 576 };
+      const widthMap  = { '1:1': 1024, '4:3': 1024, '16:9': 1024 };
+
+      const resp = await fetch(API_CONFIG.stability.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_CONFIG.stability.key}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          text_prompts: [
+            { text: fullPrompt, weight: 1 },
+            { text: negPrompt, weight: -1 }
+          ],
+          cfg_scale: parseInt(selectedCFG),
+          steps: parseInt(selectedSteps),
+          seed: currentSeed,
+          samples: 1,
+          width: widthMap[selectedAspect],
+          height: heightMap[selectedAspect]
+        })
+      });
+      const data = await resp.json();
+      const b64 = data.artifacts?.[0]?.base64;
+      if (b64) imageUrl = 'data:image/png;base64,' + b64;
+
+    } else {
+      // DEMO mode — use picsum.photos placeholder
+      await new Promise(r => setTimeout(r, totalDuration));
+      imageUrl = `https://picsum.photos/seed/${currentSeed}/1024/1024`;
+    }
+
+    clearInterval(progressInterval);
+    progressBar.style.width = '100%';
+    await new Promise(r => setTimeout(r, 400));
+
+    if (imageUrl) {
+      await showResult(imageUrl, prompt);
+      credits = Math.max(0, credits - 1);
+      creditsCount.textContent = credits;
+      addToGallery(imageUrl);
+    } else {
+      throw new Error('No image returned');
+    }
+
+  } catch (err) {
+    clearInterval(progressInterval);
+    console.error(err);
+    // Demo fallback
+    const fallback = `https://picsum.photos/seed/${currentSeed}/1024/1024`;
+    await showResult(fallback, prompt);
+    credits = Math.max(0, credits - 1);
+    creditsCount.textContent = credits;
+    addToGallery(fallback);
+  }
+
+  isGenerating = false;
+  generateBtn.disabled = false;
+  loadingOverlay.classList.remove('visible');
+});
+
+async function showResult(url, prompt) {
+  outputImage.src = url;
+  metaPromptText.textContent = prompt.length > 80 ? prompt.slice(0, 80) + '…' : prompt;
+  outputSection.classList.add('visible');
+  outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  haptic('success');
+  showToast('✦ Image generated!');
+  progressBar.style.width = '0%';
+}
+
+// Download
+document.getElementById('downloadBtn').addEventListener('click', async () => {
+  if (!outputImage.src) return;
+  const a = document.createElement('a');
+  a.href = outputImage.src;
+  a.download = `pixelforge-${currentSeed}.png`;
+  a.click();
+  showToast('⬇ Downloading…');
+  haptic();
+});
+
+// Share via Telegram
+document.getElementById('shareBtn').addEventListener('click', () => {
+  if (tg && outputImage.src) {
+    tg.switchInlineQuery?.(`🎨 Generated with PixelForge AI!\n\nPrompt: ${promptInput.value.slice(0, 100)}`, ['users', 'groups', 'channels']);
+  }
+  showToast('↗ Sharing…');
+  haptic();
+});
+
+// Variation
+document.getElementById('variationBtn').addEventListener('click', () => {
+  seedInput.value = Math.floor(Math.random() * 999999999);
+  generateBtn.click();
+  haptic();
+});
+
+// Regen
+document.getElementById('regenBtn').addEventListener('click', () => {
+  generateBtn.click();
+});
+
+// Gallery
+function addToGallery(url) {
+  gallery.unshift(url);
+  if (gallery.length > 9) gallery = gallery.slice(0, 9);
+  renderGallery();
+}
+
+function renderGallery() {
+  galleryGrid.innerHTML = '';
+  const count = Math.max(3, gallery.length);
+  for (let i = 0; i < Math.min(count, 9); i++) {
+    const thumb = document.createElement('div');
+    thumb.className = 'gallery-thumb';
+    if (gallery[i]) {
+      const img = document.createElement('img');
+      img.src = gallery[i];
+      img.alt = 'Gallery image';
+      thumb.appendChild(img);
+      const idx = i;
+      thumb.addEventListener('click', () => {
+        outputImage.src = gallery[idx];
+        outputSection.classList.add('visible');
+        outputSection.scrollIntoView({ behavior: 'smooth' });
+      });
+    } else {
+      thumb.innerHTML = '<div class="thumb-empty">🎨</div>';
+    }
+    galleryGrid.appendChild(thumb);
+  }
+}
+
+renderGallery();
+
+// Toast
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(() => toastEl.classList.remove('show'), 2500);
+}
+
+// Haptic
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
+}
+</script>
+</body>
+</html>
